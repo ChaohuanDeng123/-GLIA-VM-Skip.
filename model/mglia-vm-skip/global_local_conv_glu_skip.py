@@ -118,113 +118,12 @@ class MultiHeadMamba_S(nn.Module):
         y = torch.concat(self.head_list, dim=2)
         return y
 
-class MultiHeadMamba_S_head4(nn.Module):
-    def __init__(self, d_model, head=4):
-        super().__init__()
-        self.mamba_1 = Mamba(d_model=d_model // 4)
-        self.mamba_2 = Mamba(d_model=d_model // 4)
-        self.mamba_3 = Mamba(d_model=d_model // 4)
-        self.mamba_4 = Mamba(d_model=d_model // 4)
-        self.mamba = [self.mamba_1, self.mamba_2, self.mamba_3, self.mamba_4]
-        self.head = head
-
-    def forward(self, x):
-        B, L, C = x.shape
-        x = x.view(B, L, self.head, C // self.head)
-        self.head_list = []
-        for i in range(self.head):
-            input = (x[:, :, i, :].view(B, L, C // self.head))
-            output = self.mamba[i](input)
-
-            self.head_list.append(output)
-        y = torch.concat(self.head_list, dim=2)
-        return y
-
-class MultiHeadMamba_S_head8(nn.Module):
-    def __init__(self, d_model, head=16):
-        super().__init__()
-        self.mamba_1 = Mamba(d_model=d_model // 16)
-        self.mamba_2 = Mamba(d_model=d_model // 16)
-        self.mamba_3 = Mamba(d_model=d_model // 16)
-        self.mamba_4 = Mamba(d_model=d_model // 16)
-        self.mamba_5 = Mamba(d_model=d_model // 16)
-        self.mamba_6 = Mamba(d_model=d_model // 16)
-        self.mamba_7 = Mamba(d_model=d_model // 16)
-        self.mamba_8 = Mamba(d_model=d_model // 16)
-        self.mamba_9 = Mamba(d_model=d_model // 16)
-        self.mamba_10 = Mamba(d_model=d_model // 16)
-        self.mamba_11 = Mamba(d_model=d_model // 16)
-        self.mamba_12 = Mamba(d_model=d_model // 16)
-        self.mamba_13 = Mamba(d_model=d_model // 16)
-        self.mamba_14 = Mamba(d_model=d_model // 16)
-        self.mamba_15 = Mamba(d_model=d_model // 16)
-        self.mamba_16 = Mamba(d_model=d_model // 16)
-        self.mamba = [self.mamba_1, self.mamba_2, self.mamba_3, self.mamba_4, self.mamba_5, self.mamba_6, self.mamba_7, self.mamba_8,
-        self.mamba_9, self.mamba_10, self.mamba_11, self.mamba_12, self.mamba_13, self.mamba_14, self.mamba_15, self.mamba_16]
-        self.head = head
-
-    def forward(self, x):
-        B, L, C = x.shape
-        x = x.view(B, L, self.head, C // self.head)
-        self.head_list = []
-        for i in range(self.head):
-            input = (x[:, :, i, :].view(B, L, C // self.head))
-            output = self.mamba[i](input)
-
-            self.head_list.append(output)
-        y = torch.concat(self.head_list, dim=2)
-        return y
 
 
 
-class SingleHeadMamba_S(nn.Module):
-    def __init__(self, d_model, head=8):
-        super().__init__()
-        self.mamba = Mamba(d_model=d_model)
 
-    def forward(self, x):
-        y = self.mamba(x)
-        return y
 
 class VSSBlock_S(nn.Module):
-    def __init__(
-            self,
-            hidden_dim: int = 0,
-            drop_path: float = 0,
-            norm_layer: Callable[..., torch.nn.Module] = partial(nn.LayerNorm, eps=1e-6),
-            attn_drop_rate: float = 0,
-            d_state: int = 16,
-            **kwargs,
-    ):
-        super().__init__()
-        # self.ln_1 = norm_layer(hidden_dim)
-        # self.ln_2 = norm_layer(hidden_dim)
-        # self.ln_3 = norm_layer(hidden_dim)
-        self.self_attention_1 = MultiHeadMamba_S_head8(d_model=hidden_dim)
-        self.self_attention_2 = MultiHeadMamba_S_head8(d_model=hidden_dim)
-        self.drop_path = DropPath(drop_path)
-
-    def forward(self, input: torch.Tensor):
-        B, L, C = input.shape
-        # x = self.ln_1(input)
-        x1 = input.view(B, -1, C)
-        x2 = torch.flip(x1, dims=[1])
-
-
-        y1 = self.self_attention_1(x1)
-        # y1 = y1.permute(0, 2, 1)
-        y2 = self.self_attention_2(x2)
-        y2 = torch.flip(y2, dims=[-1])
-
-        # y2 = y2.view(B, H, W, C)
-        # y2 = F.silu((self.ln_2(y2)))
-        ## 不同序列信息如何融合是一个问题？
-        x = y1 + y2
-        input = input.view(B, L, C)
-        x = input + x
-        return x
-
-class VSSBlock_S_shared(nn.Module):
     def __init__(
             self,
             hidden_dim: int = 0,
@@ -246,15 +145,22 @@ class VSSBlock_S_shared(nn.Module):
         B, L, C = input.shape
         # x = self.ln_1(input)
         x1 = input.view(B, -1, C)
+        x2 = torch.flip(x1, dims=[1])
 
 
         y1 = self.self_attention_1(x1)
+        # y1 = y1.permute(0, 2, 1)
+        y2 = self.self_attention_2(x2)
+        y2 = torch.flip(y2, dims=[-1])
 
+        # y2 = y2.view(B, H, W, C)
+        # y2 = F.silu((self.ln_2(y2)))
+        ## 不同序列信息如何融合是一个问题？
+        x = y1 + y2
         input = input.view(B, L, C)
-        x = input + y1
+        x = input + x
         return x
-
-
+        
 class Space_Mamba(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -325,22 +231,6 @@ class Local_Infor(torch.nn.Module):
 
         return y
 
-class Local_Infor_xiaorong(torch.nn.Module):
-    def __init__(self, dims=96):
-        super().__init__()
-        # self.mixffn1 = MixFFN_skip(dims,dims//8)
-        # self.mixffn2 = MixFFN_skip(dims*2,dims//4)
-        # self.mixffn3 = MixFFN_skip(dims*4,dims//2)
-        # self.mixffn4 = MixFFN_skip(dims*8,dims)
-        self.mixffn1 = ConvolutionalGLU(dims,dims//16)
-        self.mixffn2 = ConvolutionalGLU(dims*2,dims//8)
-        self.mixffn3 = ConvolutionalGLU(dims*4,dims//4)
-        self.mixffn4 = ConvolutionalGLU(dims*8,dims//2)
-        # self.mixffn1 = MLP_FFN(dims,dims*2)
-        # self.mixffn2 = MLP_FFN(dims*2,dims*4)
-        # self.mixffn3 = MLP_FFN(dims*4,dims*8)
-        # self.mixffn4 = MLP_FFN(dims*8,dims*16)
-
     def forward(self, x):
         B, _, _, C = x[0].shape
         tem1 = x[0].reshape(B, -1, C)
@@ -362,18 +252,6 @@ class Local_Infor_xiaorong(torch.nn.Module):
 
         return y
 
-class Global_Infor_xiaorong(torch.nn.Module):
-    def __init__(self, dims=96):
-        super().__init__()
-        self.SM = Space_Mamba()
-
-    def forward(self, x):
-
-        ####################
-        # 参考missformer的方法
-        y = x + self.SM(x)
-
-        return y
 
 class Global_Local(torch.nn.Module):
     def __init__(self, dims=96):
@@ -394,36 +272,3 @@ class Global_Local(torch.nn.Module):
         y2 = y[:,4704:5488,:].reshape(B, 14, 14, C*4)
         y3 = y[:,5488:5880,:].reshape(B, 7, 7, C*8)
         return [y0, y1, y2, y3]
-
-class Local_Global(torch.nn.Module):
-    def __init__(self, dims=96):
-        super().__init__()
-        self.global_infor = Global_Infor_xiaorong()
-        self.norm = nn.LayerNorm(dims)
-        self.local_infor_xiaorong = Local_Infor_xiaorong()
-
-    def forward(self, x):
-        x = self.local_infor_xiaorong(x)
-        x = self.norm(x)
-        y = self.global_infor(x)
-        y = x + y
-        B, L, C = y.shape
-        y0 = y[:,:3136,:].reshape(B, 56, 56, C)
-        y1 = y[:,3136:4704,:].reshape(B, 28, 28, C*2)
-        y2 = y[:,4704:5488,:].reshape(B, 14, 14, C*4)
-        y3 = y[:,5488:5880,:].reshape(B, 7, 7, C*8)
-        return [y0, y1, y2, y3]
-if __name__ == "__main__":
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-    x1 = torch.rand((1, 56, 56, 96)).to(device)
-    x2 = torch.rand((1, 28, 28, 192)).to(device)
-    x3 = torch.rand((1, 14, 14, 384)).to(device)
-    x4 = torch.rand((1, 7, 7, 768)).to(device)
-    x = [x1, x2, x3, x4]
-    gol_loc= Local_Global().to(device)
-    output = gol_loc(x)
-    print(output[0].shape)
-    print(output[1].shape)
-    print(output[2].shape)
-    print(output[3].shape)
-    pass
