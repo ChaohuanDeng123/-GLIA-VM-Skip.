@@ -170,7 +170,6 @@ class Space_Mamba(torch.nn.Module):
         # self.projection_out = nn.Linear(in_features=196, out_features=1440)
 
     def forward(self, x_list_1):
-        # x_list_1是经过编码之后的特征图列表，其中四个特征图，其维度应该为B*49*C
         x = self.space_mamba_1(x_list_1)
         return x
 
@@ -182,9 +181,6 @@ class Global_Infor(torch.nn.Module):
         self.SM = Space_Mamba()
 
     def forward(self, x):
-
-        ####################
-        # 参考missformer的方法
         B, H, W, C = x[0].shape
         x_embed_0 = x[0].view(B, -1, C)
         x_embed_1 = x[1].view(B, -1, C)
